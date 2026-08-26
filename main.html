@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operations Command Center</title>
+<style>
+/* ============================================================
+   ZenduOne Operations Command Center
+   Scoped styles - every rule sits under #occ-root so nothing
+   leaks into the MyGeotab shell.
+   ============================================================ */
+#occ-root, #occ-root *, #occ-root *::before, #occ-root *::after { box-sizing: border-box; }
+
+#occ-root {
+  --navy:      #0d2340;
+  --navy-2:    #12305a;
+  --green:     #16a34a;
+  --green-lt:  #dcfce7;
+  --amber:     #f59e0b;
+  --amber-lt:  #fef3c7;
+  --red:       #dc2626;
+  --red-lt:    #fee2e2;
+  --blue:      #2563eb;
+  --blue-lt:   #dbeafe;
+  --page:      #f4f6f9;
+  --card:      #ffffff;
+  --line:      #e4e8ef;
+  --ink:       #16233a;
+  --ink-2:     #5b6a83;
+  --ink-3:     #8b98ac;
+  --radius:    10px;
+
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--page);
+  min-height: 100%;
+  padding-bottom: 28px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- top bar ---------- */
+#occ-root .occ-topbar {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(90deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #fff; padding: 0 16px; height: 48px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+#occ-root .occ-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .09em; font-size: 14px; }
+#occ-root .occ-brand svg { width: 20px; height: 20px; flex: none; }
+#occ-root .occ-vrule { width: 1px; height: 22px; background: rgba(255,255,255,.28); }
+#occ-root .occ-title { font-size: 14px; font-weight: 600; }
+#occ-root .occ-spacer { flex: 1; }
+#occ-root .occ-topmeta { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: rgba(255,255,255,.8); }
+#occ-root .occ-btn {
+  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px; padding: 5px 11px; font-size: 11.5px; cursor: pointer; font-family: inherit;
+}
+#occ-root .occ-btn:hover { background: rgba(255,255,255,.22); }
+#occ-root .occ-btn:focus-visible { outline: 2px solid #7dd3a0; outline-offset: 1px; }
+
+/* ---------- filter bar ---------- */
+#occ-root .occ-filterbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--line); border-top: none;
+  padding: 10px 14px; border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 12px;
+}
+#occ-root .occ-field { display: flex; align-items: center; gap: 6px; }
+#occ-root .occ-field > span { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; }
+#occ-root select {
+  font-family: inherit; font-size: 12.5px; color: var(--ink); background: #fff;
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; max-width: 320px;
+}
+#occ-root select:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+#occ-root .occ-tabs { display: flex; gap: 4px; margin-left: auto; background: #eef1f6; padding: 3px; border-radius: 8px; }
+#occ-root .occ-tab {
+  border: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--ink-2); padding: 7px 18px; border-radius: 6px; cursor: pointer;
+}
+#occ-root .occ-tab[aria-selected="true"] { background: var(--green); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+#occ-root .occ-tab:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
+
+/* ---------- KPI strip ---------- */
+#occ-root .occ-kpis {
+  display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 10px; margin-bottom: 12px;
+}
+#occ-root .occ-kpi {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 11px 12px; display: flex; gap: 10px; align-items: flex-start; min-height: 78px;
+}
+#occ-root .occ-kpi.is-pending { background: repeating-linear-gradient(135deg,#fff,#fff 9px,#fafbfd 9px,#fafbfd 18px); }
+#occ-root .occ-kpi-icon {
+  width: 28px; height: 28px; border-radius: 7px; flex: none;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+#occ-root .occ-kpi-body { min-width: 0; }
+#occ-root .occ-kpi-val { font-size: 21px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }
+#occ-root .occ-kpi-lbl { font-size: 11px; color: var(--ink-2); margin-top: 3px; line-height: 1.3; }
+#occ-root .occ-kpi-sub { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
+#occ-root .occ-pill {
+  display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: #eef1f6; color: var(--ink-3);
+}
+
+/* ---------- cards ---------- */
+#occ-root .occ-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  margin-bottom: 12px; overflow: hidden;
+}
+#occ-root .occ-card-head {
+  display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--line);
+}
+#occ-root .occ-dot {
+  width: 19px; height: 19px; border-radius: 5px; background: var(--green-lt); color: var(--green);
+  font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;
+}
+#occ-root .occ-card-title { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+#occ-root .occ-card-note { font-size: 11px; color: var(--ink-3); margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#occ-root .occ-link {
+  background: none; border: none; font-family: inherit; font-size: 11.5px; color: var(--blue);
+  cursor: pointer; padding: 3px 6px; border-radius: 4px; font-weight: 600;
+}
+#occ-root .occ-link:hover { background: var(--blue-lt); }
+#occ-root .occ-card-body { padding: 12px 14px; }
+#occ-root .occ-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#occ-root .occ-grid-2 > .occ-card { margin-bottom: 0; }
+
+/* ---------- tables ---------- */
+#occ-root .occ-scroll { max-height: 420px; overflow: auto; }
+#occ-root table.occ-tbl { width: 100%; border-collapse: collapse; }
+#occ-root .occ-tbl th {
+  position: sticky; top: 0; background: #f7f9fc; text-align: left; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 700;
+  padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; z-index: 1;
+}
+#occ-root .occ-tbl td { padding: 8px 12px; border-bottom: 1px solid #f0f3f7; font-size: 12.5px; vertical-align: middle; }
+#occ-root .occ-tbl tbody tr:hover { background: #fafcff; }
+#occ-root .occ-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+#occ-root .occ-name { font-weight: 600; }
+#occ-root .occ-muted { color: var(--ink-3); }
+
+#occ-root .occ-bar { height: 6px; border-radius: 3px; background: #eef1f6; overflow: hidden; min-width: 74px; }
+#occ-root .occ-bar > i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+#occ-root .occ-barwrap { display: flex; align-items: center; gap: 8px; }
+
+#occ-root .occ-tag {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+}
+#occ-root .occ-tag.ok    { background: var(--green-lt); color: #15803d; }
+#occ-root .occ-tag.warn  { background: var(--amber-lt); color: #b45309; }
+#occ-root .occ-tag.bad   { background: var(--red-lt);   color: #b91c1c; }
+#occ-root .occ-tag.info  { background: var(--blue-lt);  color: #1d4ed8; }
+#occ-root .occ-tag.idle  { background: #eef1f6;         color: var(--ink-2); }
+
+/* ---------- states ---------- */
+#occ-root .occ-empty { padding: 26px 14px; text-align: center; color: var(--ink-3); font-size: 12.5px; }
+#occ-root .occ-empty strong { display: block; color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
+#occ-root .occ-placeholder {
+  border: 1px dashed #ccd4e0; border-radius: 8px; background: #fbfcfe;
+  padding: 18px 16px; color: var(--ink-2); font-size: 12.5px; line-height: 1.55;
+}
+#occ-root .occ-placeholder strong { color: var(--ink); }
+#occ-root .occ-placeholder code {
+  background: #eef1f6; border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+  font-family: Consolas, "SF Mono", Menlo, monospace;
+}
+#occ-root .occ-loading { display: flex; align-items: center; gap: 9px; color: var(--ink-2); padding: 22px 14px; font-size: 12.5px; }
+#occ-root .occ-spin {
+  width: 15px; height: 15px; border: 2px solid #d7dee9; border-top-color: var(--green);
+  border-radius: 50%; animation: occ-spin .8s linear infinite; flex: none;
+}
+@keyframes occ-spin { to { transform: rotate(360deg); } }
+#occ-root .occ-banner {
+  display: none; align-items: center; gap: 9px; background: var(--amber-lt); border: 1px solid #f6d68a;
+  color: #7c4a03; border-radius: var(--radius); padding: 9px 13px; margin-bottom: 12px; font-size: 12.5px;
+}
+#occ-root .occ-banner.show { display: flex; }
+#occ-root .occ-hide { display: none !important; }
+
+/* ---------- fault viewer ---------- */
+#occ-root .occ-faultpick { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 12px; }
+#occ-root .occ-faultpick select { max-width: 420px; flex: 1 1 260px; }
+#occ-root .occ-fault {
+  border: 1px solid var(--line); border-left: 3px solid var(--amber); border-radius: 7px;
+  padding: 10px 12px; margin-bottom: 8px; background: #fffdf8;
+}
+#occ-root .occ-fault.crit { border-left-color: var(--red); background: #fffafa; }
+#occ-root .occ-fault-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#occ-root .occ-fault-name { font-weight: 600; font-size: 12.5px; }
+#occ-root .occ-fault-meta {
+  display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: var(--ink-2);
+}
+#occ-root .occ-fault-meta b { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 1180px) {
+  #occ-root .occ-kpis { grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+@media (max-width: 860px) {
+  #occ-root .occ-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #occ-root .occ-grid-2 { grid-template-columns: 1fr; }
+  #occ-root .occ-tabs { margin-left: 0; width: 100%; }
+  #occ-root .occ-tab { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #occ-root .occ-spin { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="occ-root">
+
+  <!-- ===================== TOP BAR ===================== -->
+  <div class="occ-topbar">
+    <div class="occ-brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#22c55e" d="M12 2 2.6 6.5v5.9c0 5 4 8.9 9.4 9.6 5.4-.7 9.4-4.6 9.4-9.6V6.5L12 2Zm-1 14.2-3.7-3.6 1.5-1.5 2.2 2.1 5-4.9 1.5 1.5-6.5 6.4Z"/></svg>
+      ZENDUONE
+    </div>
+    <div class="occ-vrule"></div>
+    <div class="occ-title">Operations Command Center</div>
+    <div class="occ-spacer"></div>
+    <div class="occ-topmeta">
+      <span>Updated <span id="occ-updated">&mdash;</span></span>
+      <button class="occ-btn" id="occ-refresh" type="button">Refresh</button>
+    </div>
+  </div>
+
+  <!-- ===================== FILTER BAR ===================== -->
+  <div class="occ-filterbar">
+    <label class="occ-field"><span>Group</span><select id="occ-group"><option>Loading&hellip;</option></select></label>
+    <label class="occ-field"><span>Offline after</span>
+      <select id="occ-offline-hours">
+        <option value="1">1 hour</option>
+        <option value="4">4 hours</option>
+        <option value="8">8 hours</option>
+        <option value="12">12 hours</option>
+        <option value="24" selected>24 hours</option>
+        <option value="72">3 days</option>
+      </select>
+    </label>
+    <label class="occ-field"><span>Sites by</span>
+      <select id="occ-sitelevel">
+        <option value="children" selected>Sub-groups of selection</option>
+        <option value="leaf">Asset's own group</option>
+      </select>
+    </label>
+    <label class="occ-field"><span>Units</span>
+      <select id="occ-units"><option value="metric" selected>Metric (km)</option><option value="imperial">Imperial (mi)</option></select>
+    </label>
+    <div class="occ-tabs" role="tablist" aria-label="Dashboard views">
+      <button class="occ-tab" id="occ-tab-operations"  role="tab" aria-selected="true"  data-tab="operations"  type="button">Operations</button>
+      <button class="occ-tab" id="occ-tab-maintenance" role="tab" aria-selected="false" data-tab="maintenance" type="button">Maintenance</button>
+    </div>
+  </div>
+
+  <div class="occ-banner" id="occ-banner"><span id="occ-banner-text"></span></div>
+
+  <!-- ===================== KPI STRIP ===================== -->
+  <div class="occ-kpis">
+    <div class="occ-kpi">
+      <div class="occ-kpi-icon" style="background:var(--blue-lt);color:var(--blue)">&#128666;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-assets">&mdash;</div>
+        <div class="occ-kpi-lbl">Total assets</div>
+        <div class="occ-kpi-sub" id="kpi-assets-sub">In selected group</div>
+      </div>
+    </div>
+    <div class="occ-kpi">
+      <div class="occ-kpi-icon" style="background:var(--green-lt);color:var(--green)">&#9889;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-active">&mdash;</div>
+        <div class="occ-kpi-lbl">Active today</div>
+        <div class="occ-kpi-sub" id="kpi-active-sub">Reported since midnight</div>
+      </div>
+    </div>
+    <div class="occ-kpi">
+      <div class="occ-kpi-icon" style="background:var(--blue-lt);color:var(--blue)">&#128225;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-reporting">&mdash;</div>
+        <div class="occ-kpi-lbl">Devices reporting</div>
+        <div class="occ-kpi-sub" id="kpi-reporting-sub">Within offline threshold</div>
+      </div>
+    </div>
+    <div class="occ-kpi">
+      <div class="occ-kpi-icon" style="background:var(--green-lt);color:var(--green)">&#9989;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-pct">&mdash;</div>
+        <div class="occ-kpi-lbl">Active fleet</div>
+        <div class="occ-kpi-sub" id="kpi-pct-sub">Reporting / total assets</div>
+      </div>
+    </div>
+    <div class="occ-kpi">
+      <div class="occ-kpi-icon" style="background:var(--red-lt);color:var(--red)">&#9888;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-faults">&mdash;</div>
+        <div class="occ-kpi-lbl">Active faults</div>
+        <div class="occ-kpi-sub" id="kpi-faults-sub">Across <span id="kpi-faults-devices">0</span> assets</div>
+      </div>
+    </div>
+    <div class="occ-kpi is-pending">
+      <div class="occ-kpi-icon" style="background:#eef1f6;color:var(--ink-2)">&#128247;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val" id="kpi-cams">&mdash;</div>
+        <div class="occ-kpi-lbl">Cameras active</div>
+        <div class="occ-kpi-sub"><span class="occ-pill">Source pending</span></div>
+      </div>
+    </div>
+    <div class="occ-kpi is-pending">
+      <div class="occ-kpi-icon" style="background:#eef1f6;color:var(--ink-2)">&#128268;</div>
+      <div class="occ-kpi-body">
+        <div class="occ-kpi-val"><span id="kpi-cams-down">&mdash;</span> <span class="occ-muted" style="font-size:14px">/</span> <span id="kpi-cams-norec">&mdash;</span></div>
+        <div class="occ-kpi-lbl">Cameras down / not recording</div>
+        <div class="occ-kpi-sub"><span class="occ-pill">Source pending</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SITE PERFORMANCE ===================== -->
+  <div class="occ-card">
+    <div class="occ-card-head">
+      <div class="occ-dot">A</div>
+      <div class="occ-card-title">Site performance</div>
+      <div class="occ-card-note">
+        <span id="occ-site-count"></span>
+        <button class="occ-link" id="occ-export-sites" type="button">Export CSV</button>
+      </div>
+    </div>
+    <div class="occ-scroll">
+      <table class="occ-tbl">
+        <thead><tr>
+          <th>Site</th><th class="num">Assets</th><th class="num">Active units</th>
+          <th class="num">Offline</th><th>Active fleet</th><th class="num">Active faults</th><th>Status</th>
+        </tr></thead>
+        <tbody id="occ-sites"><tr><td colspan="7"><div class="occ-loading"><span class="occ-spin"></span>Loading site performance&hellip;</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== OPERATIONS TAB ===================== -->
+  <div id="occ-panel-operations" role="tabpanel" aria-labelledby="occ-tab-operations">
+
+    <div class="occ-card">
+      <div class="occ-card-head">
+        <div class="occ-dot" style="background:var(--red-lt);color:var(--red)">B</div>
+        <div class="occ-card-title">Offline assets</div>
+        <div class="occ-card-note">
+          <span id="occ-offline-count"></span>
+          <button class="occ-link" id="occ-export-offline" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="occ-scroll">
+        <table class="occ-tbl">
+          <thead><tr>
+            <th>Asset</th><th>Site</th><th>Last reported</th><th class="num">Offline for</th><th>Last known driver</th><th>Severity</th>
+          </tr></thead>
+          <tbody id="occ-offline"><tr><td colspan="6"><div class="occ-loading"><span class="occ-spin"></span>Loading assets&hellip;</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="occ-grid-2">
+      <div class="occ-card">
+        <div class="occ-card-head">
+          <div class="occ-dot" style="background:#eef1f6;color:var(--ink-2)">C</div>
+          <div class="occ-card-title">Offline cameras</div>
+          <div class="occ-card-note"><span class="occ-pill">Source pending</span></div>
+        </div>
+        <div class="occ-card-body">
+          <div class="occ-placeholder">
+            <strong>Camera health feed not connected yet.</strong><br>
+            This table will list each camera that has stopped checking in, the asset it is mounted on, and how long it has been dark.
+            Wire the feed in <code>main.html</code> at <code>CameraSource.getOfflineCameras()</code> and the rows render automatically.
+          </div>
+        </div>
+      </div>
+
+      <div class="occ-card">
+        <div class="occ-card-head">
+          <div class="occ-dot" style="background:#eef1f6;color:var(--ink-2)">D</div>
+          <div class="occ-card-title">Cameras not recording</div>
+          <div class="occ-card-note"><span class="occ-pill">Source pending</span></div>
+        </div>
+        <div class="occ-card-body">
+          <div class="occ-placeholder">
+            <strong>Recording status not connected yet.</strong><br>
+            This table will list cameras that are online but not writing video &mdash; channel, last clip time, and reason.
+            Wire the feed at <code>CameraSource.getNotRecording()</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="occ-card">
+      <div class="occ-card-head">
+        <div class="occ-dot" style="background:#eef1f6;color:var(--ink-2)">E</div>
+        <div class="occ-card-title">Driver scorecard</div>
+        <div class="occ-card-note"><span class="occ-pill">Source pending</span></div>
+      </div>
+      <div class="occ-card-body">
+        <div class="occ-placeholder">
+          <strong>Scorecard feed not connected yet.</strong><br>
+          This panel will rank drivers in the selected group by safety score, with harsh-event counts, distance driven, and trend against last period.
+          Wire the feed at <code>ScorecardSource.getDriverScores()</code>; the table, ranking, and CSV export are already built around that shape.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MAINTENANCE TAB ===================== -->
+  <div id="occ-panel-maintenance" class="occ-hide" role="tabpanel" aria-labelledby="occ-tab-maintenance">
+
+    <div class="occ-card">
+      <div class="occ-card-head">
+        <div class="occ-dot" style="background:var(--amber-lt);color:#b45309">F</div>
+        <div class="occ-card-title">Asset meters</div>
+        <div class="occ-card-note">
+          <span id="occ-meters-count"></span>
+          <button class="occ-link" id="occ-export-meters" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="occ-scroll">
+        <table class="occ-tbl">
+          <thead><tr>
+            <th>Asset</th><th>Site</th><th class="num" id="occ-odo-head">Odometer (km)</th>
+            <th class="num">Engine hours</th><th class="num">Active faults</th><th>Last reported</th>
+          </tr></thead>
+          <tbody id="occ-meters"><tr><td colspan="6"><div class="occ-loading"><span class="occ-spin"></span>Loading meters&hellip;</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="occ-card">
+      <div class="occ-card-head">
+        <div class="occ-dot" style="background:var(--red-lt);color:var(--red)">G</div>
+        <div class="occ-card-title">Active fault codes by asset</div>
+        <div class="occ-card-note">
+          <button class="occ-link" id="occ-export-faults" type="button">Export all faults (CSV)</button>
+        </div>
+      </div>
+      <div class="occ-card-body">
+        <div class="occ-faultpick">
+          <span class="occ-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Asset</span>
+          <select id="occ-fault-device"><option value="">Loading&hellip;</option></select>
+          <span id="occ-fault-summary" class="occ-muted"></span>
+        </div>
+        <div id="occ-fault-list"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#occ-root -->
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     CONFIG
+     ============================================================ */
+  var CFG = {
+    odometerDiagnostic:   "DiagnosticOdometerAdjustmentId",
+    engineHoursDiagnostic:"DiagnosticEngineHoursAdjustmentId",
+    faultLookbackDays:    30,     // window used to pull FaultData
+    faultResultsLimit:    50000,
+    deviceResultsLimit:   10000,
+    diagLookupChunk:      50      // Diagnostic name lookups per multiCall
+  };
+
+  /* ============================================================
+     CAMERA + SCORECARD SOURCES  (intentionally empty for now)
+     Return arrays in the documented shape and the UI fills in.
+     ============================================================ */
+  var CameraSource = {
+    isConfigured: function () { return false; },
+    // [{ name, asset, site, lastSeen (Date|ISO), status }]
+    getOfflineCameras: function () { return []; },
+    // [{ name, asset, site, channel, lastClip (Date|ISO), reason }]
+    getNotRecording:  function () { return []; },
+    // { total: 0, offline: 0, notRecording: 0 }
+    getCounts:        function () { return null; }
+  };
+
+  var ScorecardSource = {
+    isConfigured: function () { return false; },
+    // [{ driver, site, score, harshEvents, distanceKm, trend }]
+    getDriverScores: function () { return []; }
+  };
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  var S = {
+    api: null,
+    demo: false,
+    loaded: false,
+    loading: false,
+    tab: "operations",
+    units: "metric",
+    offlineHours: 24,
+    siteLevel: "children",
+    selectedGroupId: null,
+    groups: [], groupById: {}, childIds: {},
+    devices: [],
+    dsi: {},          // deviceId -> DeviceStatusInfo
+    odo: {},          // deviceId -> metres
+    hours: {},        // deviceId -> seconds
+    faults: {},       // deviceId -> [fault]
+    diagNames: {},    // diagnosticId -> name
+    view: { rows: [], sites: [] }
+  };
+
+  /* ============================================================
+     SMALL HELPERS
+     ============================================================ */
+  function $(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function num(n, dp) {
+    if (n == null || isNaN(n)) return "\u2014";
+    return Number(n).toLocaleString(undefined, { minimumFractionDigits: dp || 0, maximumFractionDigits: dp || 0 });
+  }
+  function pct(a, b) { return (!b) ? 0 : Math.round((a / b) * 1000) / 10; }
+  function toDate(v) { if (!v) return null; var d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+  function isRealDate(d) { return d && d.getFullYear() > 1990; }
+  function startOfToday() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+  function shortDateTime(d) {
+    if (!isRealDate(d)) return "Never";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+           d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function duration(ms) {
+    if (ms == null || ms < 0) return "\u2014";
+    var mins = Math.floor(ms / 60000);
+    if (mins < 60) return mins + "m";
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h < 24) return m ? (h + "h " + m + "m") : (h + "h");
+    var d = Math.floor(h / 24);
+    return d + "d " + (h % 24) + "h";
+  }
+
+  function banner(msg) {
+    var b = $("occ-banner");
+    if (!msg) { b.className = "occ-banner"; return; }
+    $("occ-banner-text").textContent = msg;
+    b.className = "occ-banner show";
+  }
+
+  function loadingRow(cols, text) {
+    return '<tr><td colspan="' + cols + '"><div class="occ-loading"><span class="occ-spin"></span>' + esc(text) + '</div></td></tr>';
+  }
+  function emptyRow(cols, title, sub) {
+    return '<tr><td colspan="' + cols + '"><div class="occ-empty"><strong>' + esc(title) + '</strong>' + esc(sub || "") + '</div></td></tr>';
+  }
+
+  function downloadCsv(filename, header, rows) {
+    var q = function (v) {
+      var s = (v == null ? "" : String(v));
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    var lines = [header.map(q).join(",")];
+    rows.forEach(function (r) { lines.push(r.map(q).join(",")); });
+    var blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
+  }
+
+  /* ============================================================
+     GROUP TREE
+     ============================================================ */
+  function buildGroupTree() {
+    S.groupById = {}; S.childIds = {};
+    S.groups.forEach(function (g) { S.groupById[g.id] = g; });
+    S.groups.forEach(function (g) {
+      var p = g.parent && g.parent.id;
+      if (p && S.groupById[p]) {
+        (S.childIds[p] = S.childIds[p] || []).push(g.id);
+      }
+    });
+  }
+  function groupName(id) {
+    var g = S.groupById[id];
+    if (!g) return id;
+    return (g.name && g.name.length) ? g.name : (g.id === "GroupCompanyId" ? "Company Group" : g.id);
+  }
+  function rootGroupIds() {
+    var roots = S.groups.filter(function (g) {
+      var p = g.parent && g.parent.id;
+      return !p || !S.groupById[p];
+    }).map(function (g) { return g.id; });
+    if (!roots.length && S.groups.length) roots = [S.groups[0].id];
+    return roots;
+  }
+  function descendantSet(rootId) {
+    var out = {}, stack = [rootId];
+    while (stack.length) {
+      var id = stack.pop();
+      if (out[id]) continue;
+      out[id] = true;
+      (S.childIds[id] || []).forEach(function (c) { stack.push(c); });
+    }
+    return out;
+  }
+  function fillGroupSelect() {
+    var sel = $("occ-group"), html = "";
+    function walk(id, depth) {
+      var pad = new Array(depth + 1).join("\u00a0\u00a0\u00a0");
+      html += '<option value="' + esc(id) + '">' + pad + esc(groupName(id)) + "</option>";
+      (S.childIds[id] || [])
+        .slice()
+        .sort(function (a, b) { return groupName(a).localeCompare(groupName(b)); })
+        .forEach(function (c) { walk(c, depth + 1); });
+    }
+    rootGroupIds().forEach(function (r) { walk(r, 0); });
+    sel.innerHTML = html;
+    if (!S.selectedGroupId) {
+      S.selectedGroupId = S.groupById["GroupCompanyId"] ? "GroupCompanyId" : rootGroupIds()[0];
+    }
+    sel.value = S.selectedGroupId;
+  }
+
+  function groupDepth(id) {
+    var d = 0, cur = S.groupById[id], seen = {};
+    while (cur && cur.parent && S.groupById[cur.parent.id] && !seen[cur.id]) {
+      seen[cur.id] = true; d++; cur = S.groupById[cur.parent.id];
+    }
+    return d;
+  }
+
+  /* Two ways to define a "site":
+     children - roll assets up to the direct sub-groups of the selection
+     leaf     - report each asset under the most specific group it belongs to
+     Assets attached straight to the selected group land in "Unassigned". */
+  function siteBuckets() {
+    var kids = (S.childIds[S.selectedGroupId] || []).slice();
+    var map = {};   // groupId -> siteId
+    kids.forEach(function (k) {
+      var d = descendantSet(k);
+      Object.keys(d).forEach(function (gid) { if (!map[gid]) map[gid] = k; });
+    });
+    return { siteIds: kids, groupToSite: map };
+  }
+
+  /* ============================================================
+     ROW MODEL
+     ============================================================ */
+  function buildRows() {
+    var scope = descendantSet(S.selectedGroupId);
+    var buckets = siteBuckets();
+    var now = Date.now();
+    var todayStart = startOfToday().getTime();
+    var offlineMs = S.offlineHours * 3600 * 1000;
+
+    var rows = S.devices.filter(function (d) {
+      return (d.groups || []).some(function (g) { return scope[g.id]; });
+    }).map(function (d) {
+      var siteId = null;
+      if (S.siteLevel === "leaf") {
+        var best = -1;
+        (d.groups || []).forEach(function (g) {
+          if (!scope[g.id] || g.id === S.selectedGroupId) return;
+          var dep = groupDepth(g.id);
+          if (dep > best) { best = dep; siteId = g.id; }
+        });
+      } else {
+        (d.groups || []).some(function (g) {
+          if (buckets.groupToSite[g.id]) { siteId = buckets.groupToSite[g.id]; return true; }
+          return false;
+        });
+      }
+      var site = siteId ? groupName(siteId) : "Unassigned";
+
+      var info = S.dsi[d.id] || {};
+      var last = toDate(info.dateTime);
+      var lastMs = isRealDate(last) ? last.getTime() : null;
+      var faults = S.faults[d.id] || [];
+
+      return {
+        id: d.id,
+        name: d.name || d.id,
+        serial: d.serialNumber || "",
+        site: site,
+        siteId: siteId || "__unassigned",
+        lastReported: last,
+        offlineMs: lastMs == null ? null : (now - lastMs),
+        reporting: lastMs != null && (now - lastMs) <= offlineMs,
+        activeToday: lastMs != null && lastMs >= todayStart,
+        driver: (info.driver && info.driver.name) ? info.driver.name :
+                (info.driver && info.driver.id && info.driver.id !== "UnknownDriverId" ? info.driver.id : ""),
+        odoM: S.odo[d.id] != null ? S.odo[d.id] : null,
+        hoursSec: S.hours[d.id] != null ? S.hours[d.id] : null,
+        faults: faults
+      };
+    });
+
+    rows.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+
+    // site rollup
+    var byId = {}, order = [];
+    rows.forEach(function (r) {
+      if (!byId[r.siteId]) {
+        byId[r.siteId] = { id: r.siteId, name: r.site, assets: 0, activeToday: 0, reporting: 0, offline: 0, faults: 0 };
+        order.push(r.siteId);
+      }
+      var s = byId[r.siteId];
+      s.assets++;
+      if (r.activeToday) s.activeToday++;
+      if (r.reporting) s.reporting++; else s.offline++;
+      s.faults += r.faults.length;
+    });
+    var sites = order.map(function (k) { return byId[k]; })
+      .sort(function (a, b) { return pct(a.reporting, a.assets) - pct(b.reporting, b.assets); });
+
+    S.view = { rows: rows, sites: sites };
+  }
+
+  /* ============================================================
+     UNITS
+     ============================================================ */
+  function odoDisplay(metres) {
+    if (metres == null) return null;
+    return S.units === "imperial" ? metres / 1609.344 : metres / 1000;
+  }
+  function odoLabel() { return S.units === "imperial" ? "Odometer (mi)" : "Odometer (km)"; }
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+  function render() {
+    var rows = S.view.rows, sites = S.view.sites;
+    var total = rows.length;
+    var activeToday = rows.filter(function (r) { return r.activeToday; }).length;
+    var reporting = rows.filter(function (r) { return r.reporting; }).length;
+    var offline = rows.filter(function (r) { return !r.reporting; });
+    var faultTotal = 0, faultDevices = 0;
+    rows.forEach(function (r) { if (r.faults.length) { faultDevices++; faultTotal += r.faults.length; } });
+
+    $("kpi-assets").textContent = num(total);
+    $("kpi-assets-sub").textContent = groupName(S.selectedGroupId);
+    $("kpi-active").textContent = num(activeToday);
+    $("kpi-active-sub").textContent = total ? pct(activeToday, total).toFixed(1) + "% of fleet" : "\u2014";
+    $("kpi-reporting").textContent = num(reporting);
+    $("kpi-reporting-sub").textContent = "Within " + S.offlineHours + "h \u2022 " + num(offline.length) + " offline";
+    $("kpi-pct").textContent = total ? pct(reporting, total).toFixed(1) + "%" : "\u2014";
+    $("kpi-faults").textContent = num(faultTotal);
+    $("kpi-faults-devices").textContent = num(faultDevices);
+
+    var cams = CameraSource.getCounts();
+    $("kpi-cams").textContent      = cams ? num(cams.total) : "\u2014";
+    $("kpi-cams-down").textContent = cams ? num(cams.offline) : "\u2014";
+    $("kpi-cams-norec").textContent= cams ? num(cams.notRecording) : "\u2014";
+
+    renderSites(sites);
+    renderOffline(offline);
+    renderMeters(rows);
+    renderFaultPicker(rows);
+    $("occ-odo-head").textContent = odoLabel();
+    $("occ-updated").textContent = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  function statusTag(p) {
+    if (p >= 95) return '<span class="occ-tag ok">Healthy</span>';
+    if (p >= 85) return '<span class="occ-tag warn">Watch</span>';
+    return '<span class="occ-tag bad">Action needed</span>';
+  }
+
+  function renderSites(sites) {
+    var tb = $("occ-sites");
+    if (!sites.length) {
+      tb.innerHTML = emptyRow(7, "No assets in this group", "Pick a different group, or check group assignments on your devices.");
+      $("occ-site-count").textContent = "";
+      return;
+    }
+    tb.innerHTML = sites.map(function (s) {
+      var p = pct(s.reporting, s.assets);
+      return "<tr>" +
+        '<td class="occ-name">' + esc(s.name) + "</td>" +
+        '<td class="num">' + num(s.assets) + "</td>" +
+        '<td class="num">' + num(s.activeToday) + "</td>" +
+        '<td class="num">' + (s.offline ? '<span style="color:var(--red);font-weight:600">' + num(s.offline) + "</span>" : "0") + "</td>" +
+        '<td><div class="occ-barwrap"><div class="occ-bar"><i style="width:' + p + '%;background:' +
+          (p >= 95 ? "var(--green)" : p >= 85 ? "var(--amber)" : "var(--red)") + '"></i></div><span style="font-weight:600">' + p.toFixed(1) + "%</span></div></td>" +
+        '<td class="num">' + (s.faults ? '<span style="color:var(--amber);font-weight:600">' + num(s.faults) + "</span>" : "0") + "</td>" +
+        "<td>" + statusTag(p) + "</td>" +
+      "</tr>";
+    }).join("");
+    $("occ-site-count").textContent = sites.length + (sites.length === 1 ? " site" : " sites");
+  }
+
+  function renderOffline(list) {
+    var tb = $("occ-offline");
+    if (!list.length) {
+      tb.innerHTML = emptyRow(6, "Every asset is reporting", "Nothing has gone quiet for more than " + S.offlineHours + " hours.");
+      $("occ-offline-count").textContent = "0 offline";
+      return;
+    }
+    list.sort(function (a, b) {
+      if (a.offlineMs == null) return -1;
+      if (b.offlineMs == null) return 1;
+      return b.offlineMs - a.offlineMs;
+    });
+    tb.innerHTML = list.map(function (r) {
+      var hrs = r.offlineMs == null ? Infinity : r.offlineMs / 3600000;
+      var tag = hrs >= 72 ? '<span class="occ-tag bad">Critical</span>'
+              : hrs >= 24 ? '<span class="occ-tag warn">High</span>'
+              : '<span class="occ-tag info">Monitor</span>';
+      return "<tr>" +
+        '<td class="occ-name">' + esc(r.name) + "</td>" +
+        "<td>" + esc(r.site) + "</td>" +
+        "<td>" + esc(shortDateTime(r.lastReported)) + "</td>" +
+        '<td class="num" style="font-weight:600">' + (r.offlineMs == null ? "No data" : esc(duration(r.offlineMs))) + "</td>" +
+        "<td>" + (r.driver ? esc(r.driver) : '<span class="occ-muted">Not assigned</span>') + "</td>" +
+        "<td>" + tag + "</td>" +
+      "</tr>";
+    }).join("");
+    $("occ-offline-count").textContent = list.length + " offline";
+  }
+
+  function renderMeters(rows) {
+    var tb = $("occ-meters");
+    if (!rows.length) {
+      tb.innerHTML = emptyRow(6, "No assets in this group", "Pick a different group to see meter readings.");
+      $("occ-meters-count").textContent = "";
+      return;
+    }
+    tb.innerHTML = rows.map(function (r) {
+      var odo = odoDisplay(r.odoM);
+      var eh = r.hoursSec == null ? null : r.hoursSec / 3600;
+      return "<tr>" +
+        '<td class="occ-name">' + esc(r.name) + "</td>" +
+        "<td>" + esc(r.site) + "</td>" +
+        '<td class="num">' + (odo == null ? '<span class="occ-muted">No reading</span>' : num(odo, 0)) + "</td>" +
+        '<td class="num">' + (eh == null ? '<span class="occ-muted">No reading</span>' : num(eh, 1)) + "</td>" +
+        '<td class="num">' + (r.faults.length ? '<span class="occ-tag warn">' + r.faults.length + "</span>" : '<span class="occ-tag ok">0</span>') + "</td>" +
+        "<td>" + esc(shortDateTime(r.lastReported)) + "</td>" +
+      "</tr>";
+    }).join("");
+    $("occ-meters-count").textContent = rows.length + " assets";
+  }
+
+  function renderFaultPicker(rows) {
+    var withFaults = rows.filter(function (r) { return r.faults.length; });
+    var sel = $("occ-fault-device");
+    var prev = sel.value;
+    var opts = '<option value="">' + (withFaults.length ? "Select an asset\u2026" : "No assets with active faults") + "</option>";
+    withFaults.sort(function (a, b) { return b.faults.length - a.faults.length; }).forEach(function (r) {
+      opts += '<option value="' + esc(r.id) + '">' + esc(r.name) + " \u2014 " + r.faults.length + " active</option>";
+    });
+    sel.innerHTML = opts;
+    if (prev && withFaults.some(function (r) { return r.id === prev; })) sel.value = prev;
+    $("occ-fault-summary").textContent = withFaults.length
+      ? withFaults.length + " assets carrying active faults"
+      : "";
+    renderFaultList(sel.value);
+  }
+
+  function renderFaultList(deviceId) {
+    var box = $("occ-fault-list");
+    if (!deviceId) {
+      box.innerHTML = '<div class="occ-empty"><strong>Pick an asset above</strong>Active fault codes, severity, and lamp status appear here.</div>';
+      return;
+    }
+    var row = S.view.rows.filter(function (r) { return r.id === deviceId; })[0];
+    if (!row || !row.faults.length) {
+      box.innerHTML = '<div class="occ-empty"><strong>No active faults</strong>This asset is clear right now.</div>';
+      return;
+    }
+    box.innerHTML = row.faults.slice().sort(function (a, b) {
+      return (toDate(b.dateTime) || 0) - (toDate(a.dateTime) || 0);
+    }).map(function (f) {
+      var sev = enumName(f.severity) || "Unknown";
+      var crit = /critical|severe/i.test(sev);
+      var lamp = enumName(f.malfunctionLamp);
+      var did = f.diagnostic && f.diagnostic.id;
+      var name = (did && S.diagNames[did]) || (f.diagnostic && f.diagnostic.name) || did || "Unnamed diagnostic";
+      return '<div class="occ-fault' + (crit ? " crit" : "") + '">' +
+        '<div class="occ-fault-top">' +
+          '<span class="occ-fault-name">' + esc(name) + "</span>" +
+          '<span class="occ-tag ' + (crit ? "bad" : "warn") + '">' + esc(sev) + "</span>" +
+          (f.count ? '<span class="occ-tag idle">Seen ' + num(f.count) + "\u00d7</span>" : "") +
+        "</div>" +
+        '<div class="occ-fault-meta">' +
+          "<span>Since <b>" + esc(shortDateTime(toDate(f.dateTime))) + "</b></span>" +
+          (lamp && lamp !== "None" ? "<span>Lamp <b>" + esc(lamp) + "</b></span>" : "") +
+          (f.controller && (f.controller.name || f.controller.id) ? "<span>Source <b>" + esc(f.controller.name || f.controller.id) + "</b></span>" : "") +
+          (did ? '<span class="occ-muted">' + esc(did) + "</span>" : "") +
+        "</div>" +
+      "</div>";
+    }).join("");
+  }
+
+  function enumName(v) {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    return v.name || v.id || "";
+  }
+
+  /* ============================================================
+     EXPORTS
+     ============================================================ */
+  function wireExports() {
+    $("occ-export-sites").addEventListener("click", function () {
+      downloadCsv("site-performance.csv",
+        ["Site", "Assets", "Active units", "Offline", "Active fleet %", "Active faults"],
+        S.view.sites.map(function (s) { return [s.name, s.assets, s.activeToday, s.offline, pct(s.reporting, s.assets), s.faults]; }));
+    });
+    $("occ-export-offline").addEventListener("click", function () {
+      downloadCsv("offline-assets.csv",
+        ["Asset", "Site", "Last reported", "Offline for", "Last known driver"],
+        S.view.rows.filter(function (r) { return !r.reporting; })
+          .map(function (r) { return [r.name, r.site, isRealDate(r.lastReported) ? r.lastReported.toISOString() : "Never", duration(r.offlineMs), r.driver]; }));
+    });
+    $("occ-export-meters").addEventListener("click", function () {
+      downloadCsv("asset-meters.csv",
+        ["Asset", "Site", odoLabel(), "Engine hours", "Active faults", "Last reported"],
+        S.view.rows.map(function (r) {
+          var odo = odoDisplay(r.odoM);
+          return [r.name, r.site, odo == null ? "" : Math.round(odo),
+                  r.hoursSec == null ? "" : (r.hoursSec / 3600).toFixed(1),
+                  r.faults.length, isRealDate(r.lastReported) ? r.lastReported.toISOString() : ""];
+        }));
+    });
+    $("occ-export-faults").addEventListener("click", function () {
+      var out = [];
+      S.view.rows.forEach(function (r) {
+        r.faults.forEach(function (f) {
+          var did = f.diagnostic && f.diagnostic.id;
+          out.push([r.name, r.site, (did && S.diagNames[did]) || did || "", did || "",
+                    enumName(f.severity), enumName(f.malfunctionLamp),
+                    toDate(f.dateTime) ? toDate(f.dateTime).toISOString() : "", f.count || ""]);
+        });
+      });
+      downloadCsv("active-fault-codes.csv",
+        ["Asset", "Site", "Diagnostic", "Diagnostic ID", "Severity", "Lamp", "Active since", "Occurrences"], out);
+    });
+  }
+
+  /* ============================================================
+     DATA LOAD (MyGeotab)
+     ============================================================ */
+  function nowIso() { return new Date().toISOString(); }
+
+  function loadAll() {
+    if (S.loading) return;
+    S.loading = true;
+    banner("");
+    $("occ-sites").innerHTML = loadingRow(7, "Loading site performance\u2026");
+    $("occ-offline").innerHTML = loadingRow(6, "Loading assets\u2026");
+    $("occ-meters").innerHTML = loadingRow(6, "Loading meters\u2026");
+
+    if (S.demo) { loadDemo(); S.loading = false; return; }
+
+    var from = new Date(Date.now() - CFG.faultLookbackDays * 86400000).toISOString();
+    var iso = nowIso();
+
+    S.api.multiCall([
+      ["Get", { typeName: "Group" }],
+      ["Get", { typeName: "Device", search: { fromDate: iso }, resultsLimit: CFG.deviceResultsLimit }],
+      ["Get", { typeName: "DeviceStatusInfo" }],
+      ["Get", { typeName: "StatusData", search: { diagnosticSearch: { id: CFG.odometerDiagnostic }, fromDate: iso, toDate: iso } }],
+      ["Get", { typeName: "StatusData", search: { diagnosticSearch: { id: CFG.engineHoursDiagnostic }, fromDate: iso, toDate: iso } }],
+      ["Get", { typeName: "FaultData", search: { fromDate: from, toDate: iso }, resultsLimit: CFG.faultResultsLimit }]
+    ], function (res) {
+      S.groups  = res[0] || [];
+      S.devices = res[1] || [];
+
+      buildGroupTree();
+      fillGroupSelect();
+
+      S.dsi = {};
+      (res[2] || []).forEach(function (i) { if (i.device && i.device.id) S.dsi[i.device.id] = i; });
+
+      S.odo = {};
+      (res[3] || []).forEach(function (sd) {
+        if (sd.device && sd.device.id && sd.data != null) S.odo[sd.device.id] = sd.data;
+      });
+
+      S.hours = {};
+      (res[4] || []).forEach(function (sd) {
+        if (sd.device && sd.device.id && sd.data != null) S.hours[sd.device.id] = sd.data;
+      });
+
+      S.faults = {};
+      var diagIds = {};
+      (res[5] || []).forEach(function (f) {
+        if (!f.device || !f.device.id) return;
+        if (enumName(f.faultState) !== "Active") return;
+        var dis = toDate(f.dismissDateTime);
+        if (isRealDate(dis) || (f.dismissUser && f.dismissUser.id && f.dismissUser.id !== "UnknownDriverId")) return;
+        (S.faults[f.device.id] = S.faults[f.device.id] || []).push(f);
+        if (f.diagnostic && f.diagnostic.id) diagIds[f.diagnostic.id] = true;
+      });
+
+      S.loaded = true;
+      buildRows();
+      render();
+      S.loading = false;
+
+      lookupDiagnostics(Object.keys(diagIds));
+    }, function (err) {
+      S.loading = false;
+      var msg = (err && (err.message || err.name)) ? (err.message || err.name) : String(err);
+      banner("Could not load fleet data: " + msg + " \u2014 check that this user has access to Devices, Status Data, and Fault Data, then hit Refresh.");
+      $("occ-sites").innerHTML = emptyRow(7, "Data unavailable", msg);
+      $("occ-offline").innerHTML = emptyRow(6, "Data unavailable", msg);
+      $("occ-meters").innerHTML = emptyRow(6, "Data unavailable", msg);
+    });
+  }
+
+  function lookupDiagnostics(ids) {
+    if (!ids.length || S.demo) return;
+    var pending = ids.filter(function (id) { return !S.diagNames[id]; });
+    var i = 0;
+    function next() {
+      if (i >= pending.length) { renderFaultList($("occ-fault-device").value); return; }
+      var chunk = pending.slice(i, i + CFG.diagLookupChunk);
+      i += CFG.diagLookupChunk;
+      S.api.multiCall(chunk.map(function (id) { return ["Get", { typeName: "Diagnostic", search: { id: id } }]; }),
+        function (res) {
+          (res || []).forEach(function (arr) {
+            var d = arr && arr[0];
+            if (d && d.id) S.diagNames[d.id] = d.name || d.id;
+          });
+          renderFaultList($("occ-fault-device").value);
+          next();
+        },
+        function () { next(); });  // name lookup is cosmetic; keep going
+    }
+    next();
+  }
+
+  /* ============================================================
+     DEMO DATA (standalone preview outside MyGeotab)
+     ============================================================ */
+  function loadDemo() {
+    var sites = ["Stanton", "San Juan", "Perris", "Yuma", "Tualatin"];
+    S.groups = [{ id: "GroupCompanyId", name: "Company Group" }].concat(sites.map(function (s, i) {
+      return { id: "g" + i, name: s, parent: { id: "GroupCompanyId" } };
+    }));
+    buildGroupTree(); fillGroupSelect();
+
+    S.devices = []; S.dsi = {}; S.odo = {}; S.hours = {}; S.faults = {};
+    S.diagNames = { d1: "Engine coolant temperature high", d2: "Diesel particulate filter restriction",
+                    d3: "Brake system pressure low", d4: "Battery voltage below threshold",
+                    d5: "Tire pressure sensor fault" };
+    var dn = Object.keys(S.diagNames);
+    var n = 0;
+    sites.forEach(function (s, gi) {
+      var count = [58, 41, 33, 25, 19][gi];
+      for (var k = 0; k < count; k++) {
+        var id = "dev" + (++n);
+        S.devices.push({ id: id, name: s.slice(0, 3).toUpperCase() + "-" + (1000 + n), groups: [{ id: "g" + gi }] });
+        var offlineChance = Math.random();
+        var mins = offlineChance > 0.9 ? Math.floor(Math.random() * 6000) + 200 : Math.floor(Math.random() * 90);
+        S.dsi[id] = { device: { id: id }, dateTime: new Date(Date.now() - mins * 60000).toISOString(),
+                      driver: Math.random() > 0.4 ? { id: "u" + n, name: "Driver " + n } : { id: "UnknownDriverId" } };
+        S.odo[id] = Math.floor(Math.random() * 480000000) + 20000000;
+        S.hours[id] = Math.floor(Math.random() * 18000) * 3600;
+        if (Math.random() > 0.78) {
+          var f = [], fc = Math.ceil(Math.random() * 3);
+          for (var j = 0; j < fc; j++) {
+            var d = dn[Math.floor(Math.random() * dn.length)];
+            f.push({ device: { id: id }, diagnostic: { id: d }, faultState: "Active",
+                     severity: Math.random() > 0.65 ? "Critical" : "Warning",
+                     malfunctionLamp: Math.random() > 0.6 ? "On" : "None",
+                     count: Math.ceil(Math.random() * 40),
+                     dateTime: new Date(Date.now() - Math.random() * 12 * 86400000).toISOString() });
+          }
+          S.faults[id] = f;
+        }
+      }
+    });
+    S.loaded = true;
+    banner("Preview mode \u2014 showing sample data. Inside MyGeotab this loads your live fleet.");
+    buildRows(); render();
+  }
+
+  /* ============================================================
+     WIRING
+     ============================================================ */
+  function setTab(tab) {
+    S.tab = tab;
+    ["operations", "maintenance"].forEach(function (t) {
+      $("occ-tab-" + t).setAttribute("aria-selected", String(t === tab));
+      $("occ-panel-" + t).className = (t === tab) ? "" : "occ-hide";
+    });
+  }
+
+  function wireControls() {
+    $("occ-group").addEventListener("change", function () {
+      S.selectedGroupId = this.value;
+      if (S.loaded) { buildRows(); render(); }
+    });
+    $("occ-offline-hours").addEventListener("change", function () {
+      S.offlineHours = parseInt(this.value, 10) || 24;
+      if (S.loaded) { buildRows(); render(); }
+    });
+    $("occ-sitelevel").addEventListener("change", function () {
+      S.siteLevel = this.value;
+      if (S.loaded) { buildRows(); render(); }
+    });
+    $("occ-units").addEventListener("change", function () {
+      S.units = this.value;
+      if (S.loaded) render();
+    });
+    $("occ-refresh").addEventListener("click", function () { loadAll(); });
+    $("occ-fault-device").addEventListener("change", function () { renderFaultList(this.value); });
+    Array.prototype.forEach.call(document.querySelectorAll("#occ-root .occ-tab"), function (b) {
+      b.addEventListener("click", function () { setTab(b.getAttribute("data-tab")); });
+    });
+    wireExports();
+    setTab("operations");
+  }
+
+  /* ============================================================
+     ENTRY POINTS
+     ============================================================ */
+  if (typeof geotab !== "undefined") {
+    geotab.addin = geotab.addin || {};
+    geotab.addin.operationsCommandCenter = function () {
+      return {
+        initialize: function (freshApi, freshState, initializeCallback) {
+          S.api = freshApi;
+          wireControls();
+          initializeCallback();
+          loadAll();
+        },
+        focus: function (freshApi) {
+          S.api = freshApi;
+          if (!S.loaded) loadAll();
+        },
+        blur: function () {}
+      };
+    };
+  } else {
+    // Standalone: open main.html in a browser to preview the layout.
+    S.demo = true;
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { wireControls(); loadAll(); });
+    } else { wireControls(); loadAll(); }
+  }
+})();
+</script>
+</body>
+</html>

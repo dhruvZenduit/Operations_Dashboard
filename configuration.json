@@ -1,0 +1,16 @@
+{
+  "name": "Operations Command Center",
+  "supportEmail": "support@zenduit.com",
+  "version": "1.0.0",
+  "items": [
+    {
+      "url": "main.html",
+      "path": "ActivityLink/",
+      "menuName": {
+        "en": "Operations Command Center"
+      },
+      "icon": "icon.svg"
+    }
+  ],
+  "isSigned": false
+}
