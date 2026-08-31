@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operations &amp; Maintenance — Local Preview</title>
+
+<!-- Local review harness. index.html must reference styles.css and the
+     js/ modules by ABSOLUTE URL, because MyGeotab renders Add-In markup
+     inside its own origin and relative paths would 404 there. The side
+     effect is that opening index.html locally pulls the DEPLOYED assets,
+     so local edits are invisible until they are pushed.
+
+     This page loads index.html, rewrites those absolute URLs back to
+     relative ones, and runs it from disk - so what you see is your
+     working copy. Serve the folder (python -m http.server) and open
+     /preview.html; reading index.html is blocked on file:// URLs.
+
+     Nothing here ships to MyGeotab. Do not add it to configuration.json. -->
+<style>
+  html, body { margin: 0; padding: 0; }
+  #occ-preview-error {
+    display: none;
+    margin: 24px; padding: 14px 16px;
+    border: 1px solid #f0d9a8; border-radius: 3px;
+    background: #fdf3e3; color: #6f4700;
+    font: 13px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  #occ-preview-error code {
+    background: rgba(0,0,0,.06); padding: 1px 4px; border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div id="occ-preview-error"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ORIGIN = "https://zenduit-operations-dashboard.vercel.app/";
+
+  function fail(msg) {
+    var el = document.getElementById("occ-preview-error");
+    el.style.display = "block";
+    el.innerHTML = msg;
+  }
+
+  /* Scripts injected via innerHTML never execute, and these modules have
+     a hard load order (calc and ui must be defined before operations,
+     maintenance and exports capture them). So append them one at a time
+     and wait for each. */
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error(src)); };
+      document.body.appendChild(s);
+    });
+  }
+
+  function toLocal(url) {
+    return url.indexOf(ORIGIN) === 0 ? url.slice(ORIGIN.length) : url;
+  }
+
+  /* XHR rather than fetch, to match the ES5 style the modules are
+     written in and to keep this harness testable outside a browser. */
+  function getText(url) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+        else reject(new Error("HTTP " + xhr.status));
+      };
+      xhr.onerror = function () { reject(new Error("NetworkError")); };
+      xhr.send();
+    });
+  }
+
+  /* ---- Review hooks -------------------------------------------------
+     States that only exist after a click - an expanded worklist
+     incident, the asset drawer, the Maintenance hierarchy - are the
+     ones most worth reviewing and the hardest to get to in a headless
+     browser. The hash drives them, so any state can be linked to:
+
+         #tab=maintenance      switch mode
+         #tab=operations
+         #expand               show every worklist incident
+         #drawer               open the drawer on the first incident
+         #filters              open the advanced filter panel
+         #groups               open the group tree
+
+     Combine with &, e.g. #tab=maintenance&expand.
+
+     Nothing here ships to MyGeotab - this whole file is the local
+     review harness and is not listed in configuration.json. */
+  function applyReviewHash() {
+    var raw = (location.hash || "").replace(/^#/, "");
+    if (!raw) return;
+
+    var q = {};
+    raw.split("&").forEach(function (kv) {
+      var p = kv.split("=");
+      q[p[0]] = p.length > 1 ? decodeURIComponent(p[1]) : "1";
+    });
+
+    /* The Add-In loads asynchronously, so poll for first paint rather
+       than guessing at a delay. */
+    var tries = 0;
+    function attempt() {
+      var ready = document.querySelector("#occ-root .occ-readout-hero") ||
+                  document.querySelector("#occ-root [data-q-toggle]");
+      if (!ready && tries++ < 160) { setTimeout(attempt, 50); return; }
+
+      if (q.tab) {
+        var tab = document.getElementById("occ-tab-" + q.tab);
+        if (tab) tab.click();
+      }
+
+      /* One frame after the tab switch, so the target panel exists. */
+      setTimeout(function () {
+        if (q.expand) {
+          /* Attention Required: lift the cap. Service queue: open the
+             first incident in place. */
+          var more = document.querySelector("#occ-root [data-worklist-showall='1']");
+          var row = document.querySelector("#occ-root [data-q-toggle]");
+          if (more) more.click(); else if (row) row.click();
+        }
+        if (q.drawer) {
+          var go = document.querySelector("#occ-root [data-incident-asset]") ||
+                   document.querySelector("#occ-root .occ-q-go[data-asset-open]") ||
+                   document.querySelector("#occ-root [data-asset-open]");
+          if (go) go.click();
+        }
+        if (q.filters) {
+          var add = document.getElementById("occ-filter-add");
+          if (add) add.click();
+        }
+        if (q.groups) {
+          var trig = document.getElementById("occ-group-trigger");
+          if (trig) trig.click();
+        }
+      }, 160);
+    }
+    attempt();
+  }
+
+  getText("index.html")
+    .then(function (html) {
+      var doc = new DOMParser().parseFromString(html, "text/html");
+
+      /* Stylesheet, rewritten to disk. */
+      Array.prototype.forEach.call(
+        doc.querySelectorAll('link[rel="stylesheet"]'),
+        function (link) {
+          var l = document.createElement("link");
+          l.rel = "stylesheet";
+          l.href = toLocal(link.getAttribute("href"));
+          document.head.appendChild(l);
+        }
+      );
+
+      document.title = (doc.title || "Preview") + " — Local Preview";
+
+      /* Markup first: the add-in boots against #occ-root as soon as the
+         last script runs, so the DOM has to already be in place. */
+      var root = doc.getElementById("occ-root");
+      if (!root) throw new Error("index.html has no #occ-root");
+      document.body.insertBefore(root, document.getElementById("occ-preview-error"));
+
+      var srcs = Array.prototype.map.call(
+        doc.querySelectorAll("script[src]"),
+        function (s) { return toLocal(s.getAttribute("src")); }
+      );
+
+      return srcs.reduce(function (chain, src) {
+        return chain.then(function () { return loadScript(src); });
+      }, Promise.resolve()).then(applyReviewHash);
+    })
+    .catch(function (err) {
+      var msg = String(err && err.message || err);
+      if (/Failed to fetch|NetworkError|HTTP 40/.test(msg) ||
+          location.protocol === "file:") {
+        fail("<strong>Serve this folder over HTTP.</strong><br><br>" +
+             "This page reads <code>index.html</code> over HTTP, which " +
+             "browsers block on <code>file://</code> URLs.<br><br>" +
+             "Run <code>python -m http.server</code> in the Add-In folder, " +
+             "then open <code>http://localhost:8000/preview.html</code>.");
+      } else {
+        fail("<strong>Preview failed to load.</strong><br><br><code>" +
+             msg.replace(/</g, "&lt;") + "</code>");
+      }
+    });
+})();
+</script>
+
+</body>
+</html>

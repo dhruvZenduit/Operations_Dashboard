@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operations &amp; Maintenance</title>
+
+<!-- Absolute URLs are required. MyGeotab renders Add-In markup inside its
+     own origin, so relative paths resolve against the MyGeotab host and
+     404. Classic scripts (not modules) for the same reason - cross-origin
+     ES modules need CORS headers this host does not send.
+
+     styles.css is GENERATED from src/styles.src.css by `npm run build:css`.
+     Do not edit it by hand. It must arrive as a linked stylesheet: MyGeotab
+     strips inline <style> blocks from <head>, which renders the dashboard
+     unstyled. -->
+<link rel="stylesheet" href="https://zenduit-operations-dashboard.vercel.app/styles.css">
+<script src="https://zenduit-operations-dashboard.vercel.app/js/geotab-api.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/requests.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/cache.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/status.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/group-tree.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/context.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/rank.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/route-metrics.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/dvir-metrics.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/core/safety-metrics.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/api/zenduone-api.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/camera-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/trip-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/route-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/dvir-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/maintenance-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/services/safety-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/data-service.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/mock/fixtures.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/calc.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/icons.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/hero.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/worklist.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/route-strip.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/exports.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/filters.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/group-picker.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/drawer.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/modal.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/ui/dialogs.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/overview.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/operations.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/maintenance.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/js/safety.js"></script>
+<script src="https://zenduit-operations-dashboard.vercel.app/script.js"></script>
+</head>
+<body>
+
+<div id="occ-root">
+
+  <!-- ===================== CONSOLE =====================
+       Identity, connection state and both rows of controls, as ONE
+       object. Previously these were three stacked full-width bars -
+       roughly 150px of chrome before the first fleet number. Folding
+       them into a single shell is what buys the hero and the worklist
+       enough room to both sit in the first viewport.
+
+       The wrapper is the positioning context for the advanced filter
+       panel: the console clips its own overflow (for the signal
+       hairline on the rounded corner), so the panel has to anchor to
+       something outside it. -->
+  <div class="relative mb-3" id="occ-console-wrap">
+
+    <div class="occ-console">
+
+      <!-- ===================== LEVEL 1 — SYSTEM BAR =====================
+           Identity, then what the fleet is doing, then whether the reading
+           can be trusted and how old it is. Three clusters, one row, in
+           the order an operator asks the questions: "what am I in", "how
+           is the fleet", "as of when".
+
+           The vitals are readouts, not cards. The one exception is Alerts,
+           which is a button, because an alert is the only one of the three
+           that implies an action - it jumps to the fault board with the
+           critical filter already applied. -->
+      <div class="occ-console-top">
+
+        <div class="occ-ident">
+          <span class="occ-brandmark" id="occ-brandmark" aria-hidden="true"></span>
+          <div class="occ-ident-text">
+            <h1 class="occ-ident-title">Operations &amp; Maintenance</h1>
+            <p class="occ-ident-sub">ZenduONE &middot; Fleet Command Center</p>
+          </div>
+          <!-- Connection state. Reflects the ACTUAL source: Live on a
+               MyGeotab session, Preview on sample data. The dot only
+               pulses on a real session - a pulsing lamp over sample data
+               would be a lie. Filled by script.js. -->
+          <span class="occ-livechip" id="occ-livestate" data-state="unknown">
+            <i class="occ-livedot" aria-hidden="true"></i>
+            <span id="occ-source-word">&mdash;</span>
+          </span>
+        </div>
+
+        <!-- Fleet vitals. Same instrument register as the clock beside
+             them: 10px tracked label over a mono readout. Degrades by
+             PRIORITY, not by shrinking - Fleet % drops first at <1180,
+             then Assets at <768, and Alerts is the last one standing
+             because it is the only one that can require action. -->
+        <div class="occ-vitals" id="occ-vitals" role="group" aria-label="Fleet vitals">
+          <div class="occ-vital is-wide">
+            <span class="occ-vital-label">Fleet</span>
+            <span class="occ-vital-value occ-num" id="occ-vital-fleet">&mdash;</span>
+          </div>
+          <span class="occ-vital-sep is-wide" aria-hidden="true"></span>
+          <div class="occ-vital is-mid">
+            <span class="occ-vital-label">Assets</span>
+            <span class="occ-vital-value occ-num" id="occ-vital-assets">&mdash;</span>
+          </div>
+          <span class="occ-vital-sep is-mid" aria-hidden="true"></span>
+          <button type="button" class="occ-vital occ-vital-btn" id="occ-vital-alerts">
+            <span class="occ-vital-label">Alerts</span>
+            <span class="occ-vital-value occ-num" id="occ-vital-alerts-value">&mdash;</span>
+          </button>
+        </div>
+
+        <span class="occ-rail-sep sm:block" aria-hidden="true"></span>
+
+        <!-- Environment + freshness. The clock reads WHEN THE NUMBERS
+             WERE FETCHED, not the time of day: freshness is the fact an
+             operator needs, and a wall clock does not carry it. -->
+        <div class="occ-env">
+          <div class="occ-envclock">
+            <div class="occ-clock" id="occ-clock">--:--:--</div>
+            <div class="occ-clock-label">Last update</div>
+          </div>
+
+          <!-- Refresh. Carries its own state: idle names when the data
+               landed, in-flight says so, and success confirms before
+               settling back. Below `sm` the text is dropped and the
+               aria-label carries the same reading. -->
+          <button type="button" class="occ-refresh" id="occ-refresh" aria-live="polite">
+            <span id="occ-refresh-icon" class="inline-flex flex-none"></span>
+            <span class="occ-refresh-state">
+              <span class="block font-semibold text-ink-800" id="occ-refresh-title">Refresh</span>
+              <span class="block text-[10px] text-ink-500" id="occ-refresh-sub">&mdash;</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================== LEVEL 2 — PRIMARY NAVIGATION ==============
+           The section you are in, and the one control that crosses every
+           section. Search sits here rather than on the context rail below
+           because it navigates - it answers "take me to an asset" - while
+           the rail answers "what am I looking at".
+
+           Roving tabindex: the strip is ONE stop in the page's tab order
+           and the arrow keys move inside it, which is what a tablist owes
+           a keyboard user. -->
+      <div class="occ-console-nav">
+
+        <div class="occ-tabs" role="tablist" aria-label="Dashboard sections">
+          <button type="button" class="occ-tab is-active" id="occ-tab-overview" data-tab="overview"
+                  role="tab" aria-selected="true" aria-controls="occ-panel-overview"
+                  tabindex="0">
+            <span class="occ-tab-icon" aria-hidden="true"></span>
+            <span class="occ-tab-label">Overview</span>
+          </button>
+          <button type="button" class="occ-tab" id="occ-tab-operations" data-tab="operations"
+                  role="tab" aria-selected="false" aria-controls="occ-panel-operations"
+                  tabindex="-1">
+            <span class="occ-tab-icon" aria-hidden="true"></span>
+            <span class="occ-tab-label">Operations</span>
+          </button>
+          <button type="button" class="occ-tab" id="occ-tab-maintenance" data-tab="maintenance"
+                  role="tab" aria-selected="false" aria-controls="occ-panel-maintenance"
+                  tabindex="-1">
+            <span class="occ-tab-icon" aria-hidden="true"></span>
+            <span class="occ-tab-label">Maintenance</span>
+            <!-- Critical faults. Written into by script.js, hidden at
+                 zero, and never the only carrier - the fault board states
+                 the same count in words. -->
+            <span class="occ-tab-badge" id="occ-tab-badge-maintenance" hidden></span>
+          </button>
+          <button type="button" class="occ-tab" id="occ-tab-safety" data-tab="safety"
+                  role="tab" aria-selected="false" aria-controls="occ-panel-safety"
+                  tabindex="-1">
+            <span class="occ-tab-icon" aria-hidden="true"></span>
+            <span class="occ-tab-label">Safety</span>
+          </button>
+        </div>
+
+        <!-- Global search. The shortcut hint is a real affordance: the
+             same key focuses it from anywhere in the Add-In, and the hint
+             fades on focus so it stops competing with the caret. -->
+        <div class="occ-search" id="occ-search">
+          <label class="sr-only" for="occ-f-search">Search assets</label>
+          <span class="occ-search-icon" id="occ-search-icon" aria-hidden="true"></span>
+          <input type="search" class="occ-search-input" id="occ-f-search"
+                 placeholder="Search assets, groups&hellip;" autocomplete="off"
+                 aria-describedby="occ-search-hint">
+          <button type="button" class="occ-search-clear" id="occ-search-clear"
+                  hidden aria-label="Clear search"></button>
+          <kbd class="occ-kbd" id="occ-search-hint">Ctrl K</kbd>
+        </div>
+      </div>
+
+      <!-- ===================== LEVEL 3 — CONTEXT RAIL ====================
+           Scope, in the order it narrows: which slice of the fleet, then
+           what is filtered out of it, then how many survived. Everything
+           on this row answers one question - "what am I looking at" - and
+           nothing on it navigates. -->
+      <div class="occ-console-rail">
+
+        <!-- Group context. The group is the PRIMARY fleet context, so it
+             is a first-class control on the rail rather than a select
+             inside the filter panel. Filled by js/ui/group-picker.js;
+             its tree opens in #occ-group-panel below. -->
+        <button type="button" class="occ-group-trigger flex-none" id="occ-group-trigger"
+                aria-haspopup="tree" aria-expanded="false" aria-controls="occ-group-panel">
+          <span class="occ-gt-eyebrow">Groups</span>
+          <span class="occ-gt-main"><span class="occ-gt-name">All groups</span></span>
+        </button>
+
+        <span class="occ-rail-sep" aria-hidden="true"></span>
+
+        <div class="occ-filterbar" aria-labelledby="occ-filters-title">
+          <span class="occ-filter-head">
+            <span id="occ-filter-icon" class="occ-filter-glyph" aria-hidden="true"></span>
+            <span id="occ-filters-title" class="text-label uppercase text-ink-500">Filters</span>
+            <span id="occ-filter-count" class="occ-filter-count"></span>
+          </span>
+
+          <div id="occ-filter-chips" class="occ-chips"></div>
+
+          <button type="button" class="occ-btn occ-btn-quiet flex-none" id="occ-filter-add"
+                  aria-expanded="false" aria-controls="occ-filter-panel">
+            <span id="occ-filter-add-icon" class="inline-flex" aria-hidden="true"></span>
+            Add filter
+          </button>
+
+          <button type="button" class="occ-btn occ-btn-quiet flex-none" id="occ-filter-clear" hidden>
+            Clear all
+          </button>
+        </div>
+
+        <!-- The one readout that answers "did my filter do anything?".
+             A live region so the answer reaches a screen reader too;
+             script.js writes it only when the count actually changed,
+             or every render would re-announce the same sentence. -->
+        <span class="occ-resultcount" id="occ-result-count"
+              role="status" aria-live="polite" aria-atomic="true"></span>
+      </div>
+
+    </div>
+
+    <!-- Advanced filters. Rendered on open by js/filters.js. Absolute,
+         so opening it does not reflow the dashboard below. -->
+    <div id="occ-filter-panel" class="occ-filter-panel" hidden></div>
+
+    <!-- Group tree. Rendered on open by js/ui/group-picker.js. Same
+         anchoring rule as the filter panel. -->
+    <div id="occ-group-panel" class="occ-group-panel" hidden></div>
+
+  </div><!-- /#occ-console-wrap -->
+
+  <!-- Connection / preview status. Sits OUTSIDE the tab panels: loading
+       and error states replace panel markup wholesale, and the banner has
+       to survive that. -->
+  <div id="occ-banner"></div>
+
+  <!-- ===================== OVERVIEW =====================
+       Reading order is the hierarchy: condition, then whether the
+       condition can be trusted, then the worklist, then comparison,
+       trend and distribution.
+
+       The first two are side by side rather than stacked, which is what
+       gets the worklist above the fold at 1440x900. -->
+  <div id="occ-panel-overview" role="tabpanel" aria-labelledby="occ-tab-overview" tabindex="0">
+
+    <div class="occ-grid-hero mb-3">
+      <!-- The instrument panel provides its own surface, so there is
+           deliberately no .occ-card wrapper here. -->
+      <div id="occ-fleet-health"></div>
+      <div id="occ-system-signal"></div>
+    </div>
+
+    <section class="occ-card mb-3" aria-labelledby="occ-attention-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Worklist</span>
+          <h2 class="occ-sec-title" id="occ-attention-title">Attention required</h2>
+          <p class="occ-sec-sub">
+            Ranked by severity, operational impact and time open &middot;
+            select an incident to investigate it without leaving the dashboard
+          </p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <span id="occ-attention-count"></span>
+        </div>
+      </div>
+      <div id="occ-attention"></div>
+    </section>
+
+    <div class="occ-grid-pair mb-3">
+
+      <section class="occ-card" aria-labelledby="occ-siteperf-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Comparison</span>
+            <h2 class="occ-sec-title" id="occ-siteperf-title">Site performance</h2>
+            <p class="occ-sec-sub">Select a row to filter the dashboard to that site</p>
+          </div>
+          <div class="ml-auto flex items-center gap-2 flex-none">
+            <button type="button" class="occ-btn occ-btn-quiet occ-export" data-export="sites">
+              <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+              Export
+            </button>
+          </div>
+        </div>
+        <div id="occ-site-perf"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-activity-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Trend</span>
+            <h2 class="occ-sec-title" id="occ-activity-title">Fleet activity</h2>
+            <p class="occ-sec-sub">Newly detected faults over time</p>
+          </div>
+          <div class="ml-auto flex-none">
+            <div class="occ-segs" id="occ-activity-ranges" role="group"
+                 aria-label="Activity time range"></div>
+          </div>
+        </div>
+        <div id="occ-activity"></div>
+      </section>
+
+    </div>
+
+    <div class="occ-grid-pair">
+
+      <section class="occ-card" aria-labelledby="occ-assethealth-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Distribution</span>
+            <h2 class="occ-sec-title" id="occ-assethealth-title">Asset health</h2>
+            <p class="occ-sec-sub">
+              Every asset in one condition &mdash; worst signal wins
+            </p>
+          </div>
+        </div>
+        <div id="occ-asset-health"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-camerahealth-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Coverage</span>
+            <h2 class="occ-sec-title" id="occ-camerahealth-title">Camera health</h2>
+            <p class="occ-sec-sub">Working, recording and unreachable coverage</p>
+          </div>
+          <span class="ml-auto flex-none" id="occ-camera-state"></span>
+        </div>
+        <div id="occ-camera-health"></div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <!-- ===================== OPERATIONS =====================
+       The operational detail behind Overview: who is down right now,
+       camera exceptions, driver performance. -->
+  <div id="occ-panel-operations" role="tabpanel" aria-labelledby="occ-tab-operations" tabindex="0" hidden>
+
+    <div class="mb-3">
+      <span class="occ-eyebrow">Live operations</span>
+      <h2 class="text-[15px] font-semibold text-ink-900 leading-tight">
+        Operations console
+      </h2>
+      <p class="text-xs text-ink-500 mt-0.5">
+        Fleet health, the worklist, routes, sites, activity, inspections and exceptions
+        &mdash; all in the selected group context
+      </p>
+    </div>
+
+    <!-- 1. Fleet health, compact: one rail of ranked readouts. -->
+    <div class="occ-metricwrap mb-3">
+      <div class="occ-metrics is-6" id="occ-ops-kpis"></div>
+    </div>
+
+    <!-- 2. Attention required: the same ranked worklist as Overview,
+         rendered by the same code into this container. -->
+    <section class="occ-card mb-3" aria-labelledby="occ-ops-attention-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Worklist</span>
+          <h2 class="occ-sec-title" id="occ-ops-attention-title">Attention required</h2>
+          <p class="occ-sec-sub">Ranked by severity, operational impact and time open</p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <span id="occ-ops-attention-count"></span>
+        </div>
+      </div>
+      <div id="occ-ops-attention"></div>
+    </section>
+
+    <!-- 3. Plan vs actual routes (ZenduONE dispatch + MyGeotab trips). -->
+    <section class="occ-card mb-3" aria-labelledby="occ-ops-routes-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Routes</span>
+          <h2 class="occ-sec-title" id="occ-ops-routes-title">Plan vs actual</h2>
+          <p class="occ-sec-sub">Planned stops against actual arrivals, delay, adherence and unexpected stops</p>
+        </div>
+        <span class="ml-auto flex-none" id="occ-ops-routes-state"></span>
+      </div>
+      <div id="occ-ops-routes"></div>
+    </section>
+
+    <!-- 4 + 5. Site performance and fleet activity. -->
+    <div class="occ-grid-pair mb-3">
+      <section class="occ-card" aria-labelledby="occ-ops-site-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow">Comparison</span>
+            <h2 class="occ-sec-title" id="occ-ops-site-title">Site performance</h2>
+            <p class="occ-sec-sub">Sites are the groups beneath the selected group &middot; select one to narrow</p>
+          </div>
+          <button type="button" class="occ-btn occ-btn-quiet occ-export ml-auto flex-none" data-export="sites">
+            <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+            Export
+          </button>
+        </div>
+        <div id="occ-ops-site-perf"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-ops-activity-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow">Trend</span>
+            <h2 class="occ-sec-title" id="occ-ops-activity-title">Fleet activity</h2>
+            <p class="occ-sec-sub">Newly detected faults over time</p>
+          </div>
+          <div class="occ-segs ml-auto flex-none" id="occ-ops-activity-ranges" role="group"
+               aria-label="Activity time range"></div>
+        </div>
+        <div id="occ-ops-activity"></div>
+      </section>
+    </div>
+
+    <!-- 6 + 7. DVIR compliance and asset health. -->
+    <div class="occ-grid-pair mb-3">
+      <section class="occ-card" aria-labelledby="occ-ops-dvir-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow">Inspections</span>
+            <h2 class="occ-sec-title" id="occ-ops-dvir-title">DVIR compliance</h2>
+            <p class="occ-sec-sub">Expected, completed and overdue inspections by site</p>
+          </div>
+          <span class="ml-auto flex-none" id="occ-ops-dvir-state"></span>
+        </div>
+        <div id="occ-ops-dvir"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-ops-health-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow">Distribution</span>
+            <h2 class="occ-sec-title" id="occ-ops-health-title">Asset health</h2>
+            <p class="occ-sec-sub">Each asset once, worst signal first</p>
+          </div>
+        </div>
+        <div id="occ-ops-asset-health"></div>
+      </section>
+    </div>
+
+    <section class="occ-card mb-3" aria-labelledby="occ-offline-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Worklist</span>
+          <h2 class="occ-sec-title" id="occ-offline-title">Assets offline</h2>
+          <p class="occ-sec-sub">Longest outage first &middot; select a row to investigate</p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <span id="occ-offline-count"></span>
+          <button type="button" class="occ-btn occ-btn-quiet occ-export" data-export="offline">
+            <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+            Export
+          </button>
+        </div>
+      </div>
+      <div id="occ-offline"></div>
+    </section>
+
+    <div class="occ-grid-pair mb-3">
+      <section class="occ-card" aria-labelledby="occ-camnw-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Exception</span>
+            <h2 class="occ-sec-title" id="occ-camnw-title">Cameras not working</h2>
+            <p class="occ-sec-sub">Devices unreachable on the camera network</p>
+          </div>
+          <span class="ml-auto flex-none" id="occ-camnw-state"></span>
+        </div>
+        <div id="occ-cam-notworking"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-camnr-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Exception</span>
+            <h2 class="occ-sec-title" id="occ-camnr-title">Cameras not recording</h2>
+            <p class="occ-sec-sub">Reachable, but producing no clips</p>
+          </div>
+          <span class="ml-auto flex-none" id="occ-camnr-state"></span>
+        </div>
+        <div id="occ-cam-notrecording"></div>
+      </section>
+    </div>
+
+    <section class="occ-card" aria-labelledby="occ-driver-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow is-quiet">Performance</span>
+          <h2 class="occ-sec-title" id="occ-driver-title">Driver scorecard</h2>
+          <p class="occ-sec-sub">Driver safety and performance</p>
+        </div>
+        <span class="ml-auto flex-none" id="occ-driver-state"></span>
+      </div>
+      <div id="occ-driver-body"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== MAINTENANCE =====================
+       Same visual system, different hierarchy. Overview asks "is the
+       fleet running"; Maintenance asks "what needs a mechanic, and in
+       what order" - so serviceability leads and the register follows,
+       rather than a KPI strip over one wide table. -->
+  <div id="occ-panel-maintenance" role="tabpanel" aria-labelledby="occ-tab-maintenance" tabindex="0" hidden>
+
+    <div class="mb-3 flex items-end gap-3 flex-wrap">
+      <div class="min-w-0">
+        <span class="occ-eyebrow">Maintenance</span>
+        <h2 class="text-[15px] font-semibold text-ink-900 leading-tight">Maintenance command center</h2>
+        <p class="text-xs text-ink-500 mt-0.5">
+          Serviceability, critical faults, inspection defects and the register
+          &mdash; in the selected group context
+        </p>
+      </div>
+      <!-- Opens the export dialog (ui/dialogs.js): group, date range,
+           datasets, format. Everything exported is what is on screen. -->
+      <button type="button" class="occ-btn occ-btn-primary ml-auto flex-none" id="occ-mnt-export">
+        <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+        Export maintenance data
+      </button>
+    </div>
+
+    <div class="occ-grid-hero mb-3">
+      <div id="occ-mnt-health"></div>
+      <div id="occ-mnt-signal"></div>
+    </div>
+
+    <!-- The six maintenance-health numbers, each stated as real, derived
+         or not available from the current API. -->
+    <div class="occ-metricwrap mb-3">
+      <div class="occ-metrics is-6" id="occ-mnt-tiles"></div>
+    </div>
+
+    <section class="occ-card mb-3" aria-labelledby="occ-mnt-service-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Worklist</span>
+          <h2 class="occ-sec-title" id="occ-mnt-service-title">Critical maintenance</h2>
+          <p class="occ-sec-sub">
+            Vehicles with a critical fault or a failed inspection &middot; raise a work order from the row
+          </p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <span id="occ-mnt-service-count"></span>
+        </div>
+      </div>
+      <div id="occ-mnt-service"></div>
+    </section>
+
+    <div class="occ-grid-pair mb-3">
+      <section class="occ-card" aria-labelledby="occ-faultboard-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Diagnostics</span>
+            <h2 class="occ-sec-title" id="occ-faultboard-title">Fault board</h2>
+            <p class="occ-sec-sub">Active diagnostic codes across the selection</p>
+          </div>
+          <div class="ml-auto flex items-center gap-2 flex-none">
+            <button type="button" class="occ-btn occ-btn-quiet occ-export" data-export="faults">
+              <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+              Export
+            </button>
+          </div>
+        </div>
+        <div id="occ-fault-board"></div>
+      </section>
+
+      <section class="occ-card" aria-labelledby="occ-workorder-title">
+        <div class="occ-sec-head">
+          <div class="min-w-0">
+            <span class="occ-eyebrow is-quiet">Inspections</span>
+            <h2 class="occ-sec-title" id="occ-workorder-title">Inspection defects</h2>
+            <p class="occ-sec-sub">Open DVIR defects with no repair recorded</p>
+          </div>
+          <span class="ml-auto flex-none" id="occ-workorder-state"></span>
+        </div>
+        <div id="occ-work-orders"></div>
+      </section>
+    </div>
+
+    <section class="occ-card" aria-labelledby="occ-register-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow is-quiet">Register</span>
+          <h2 class="occ-sec-title" id="occ-register-title">Asset maintenance register</h2>
+          <p class="occ-sec-sub">Sort by any column &middot; select a row to investigate</p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <button type="button" class="occ-btn occ-btn-quiet occ-export" data-export="meters">
+            <span class="occ-export-icon inline-flex" aria-hidden="true"></span>
+            Meters
+          </button>
+        </div>
+      </div>
+      <div id="occ-mnt-table"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== SAFETY =====================
+       WHO is driving safely, WHAT events are occurring, WHICH vehicles
+       are problematic. Scores are DERIVED from MyGeotab exception
+       events, rules and trips - no API provides one - and say so. -->
+  <div id="occ-panel-safety" role="tabpanel" aria-labelledby="occ-tab-safety" tabindex="0" hidden>
+
+    <div class="mb-3">
+      <span class="occ-eyebrow">Safety</span>
+      <h2 class="text-[15px] font-semibold text-ink-900 leading-tight">Driver &amp; vehicle safety</h2>
+      <p class="text-xs text-ink-500 mt-0.5">
+        Exception events, weighted per 100 km, over the last 30 days &mdash; in the selected group context
+      </p>
+    </div>
+
+    <div class="mb-3" id="occ-safety-hero"></div>
+
+    <section class="occ-card mb-3" aria-labelledby="occ-safety-drivers-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Scorecard</span>
+          <h2 class="occ-sec-title" id="occ-safety-drivers-title">Driver scorecard</h2>
+          <p class="occ-sec-sub">Ranked by derived score &middot; select a driver to see their events and trend</p>
+        </div>
+        <span class="ml-auto flex-none" id="occ-safety-drivers-state"></span>
+      </div>
+      <div id="occ-safety-drivers"></div>
+    </section>
+
+    <section class="occ-card mb-3" aria-labelledby="occ-safety-events-title">
+      <div class="occ-sec-head">
+        <div class="min-w-0">
+          <span class="occ-eyebrow">Events</span>
+          <h2 class="occ-sec-title" id="occ-safety-events-title">Safety events</h2>
+          <p class="occ-sec-sub">Counts by category, by driver or by vehicle</p>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-none">
+          <div class="occ-segs" id="occ-safety-view" role="group" aria-label="Group events by"></div>
+          <span id="occ-safety-events-state"></span>
+        </div>
+      </div>
+      <div id="occ-safety-events"></div>
+    </section>
+
+  </div>
+
+  <!-- Asset detail drawer mount. Populated by js/drawer.js. -->
+  <div id="occ-drawer" hidden></div>
+
+  <!-- Modal dialog mount (export, create work order). Populated by
+       js/ui/modal.js. -->
+  <div id="occ-modal" hidden></div>
+
+</div><!-- /#occ-root -->
+
+</body>
+</html>

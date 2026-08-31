@@ -1,0 +1,16 @@
+{
+  "name": "Operations & Maintenance",
+  "supportEmail": "support@zenduit.com",
+  "version": "4.0.0",
+  "items": [
+    {
+      "url": "https://zenduit-operations-dashboard.vercel.app/",
+      "path": "ActivityLink/",
+      "menuName": {
+        "en": "Operations & Maintenance"
+      },
+      "icon": "https://zenduit-operations-dashboard.vercel.app/icon.svg"
+    }
+  ],
+  "isSigned": false
+}

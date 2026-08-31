@@ -1,0 +1,16 @@
+{
+  "name": "zenduit-operations-dashboard",
+  "version": "4.0.0",
+  "private": true,
+  "description": "MyGeotab Add-In: Operations & Maintenance fleet command center",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i src/styles.src.css -o styles.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i src/styles.src.css -o styles.css --watch",
+    "serve": "python -m http.server 8000",
+    "test": "node --test --test-timeout=120000 --test-force-exit \"tests/**/*.test.js\""
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^3.4.0"
+  }
+}
